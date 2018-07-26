@@ -14,7 +14,7 @@ defmodule Chord do
   def distance(fret_a, fret_b),
     do: abs(fret_a - fret_b)
 
-  def permutations(notes) do
+  def voicings(notes) do
     notes
     |> all_note_sets
     |> Enum.map(&build_chords/1)
@@ -82,6 +82,6 @@ defmodule Chord do
     |> Enum.reject(&(&1 == nil))
   end
 
-  def to_string(chord),
-    do: Chord.Renderer.to_string(chord)
+  def to_string(chord, chord_name \\ nil),
+    do: Chord.Renderer.to_string(chord, chord_name)
 end

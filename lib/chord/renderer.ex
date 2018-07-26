@@ -37,8 +37,8 @@ defmodule Chord.Renderer do
   defp left_gutter(_, _),
     do: "   "
 
-  defp right_gutter(0, {root, quality}),
-    do: [:yellow, " #{root}#{quality}"]
+  defp right_gutter(0, chord_name),
+    do: [:yellow, " #{chord_name}"]
 
   defp right_gutter(_, _),
     do: ""
