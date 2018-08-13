@@ -5,12 +5,17 @@ defmodule Chord.Renderer do
   def to_string(chord, chord_name \\ nil) do
     {min, max} =
       chord
+      |> Enum.map(fn
+        {fret, finger} -> fret
+        fret -> fret
+      end)
       |> Enum.reject(&(&1 == nil))
       |> Enum.min_max()
 
     0..max(max - min, 3)
     |> Enum.map(&row_to_string(&1, min, chord, chord_name))
     |> Enum.intersperse([:bright, :black, "\n   ├┼┼┼┼┤\n"])
+    |> append_fingering(chord)
     |> IO.ANSI.format()
     |> IO.chardata_to_string()
   end
@@ -22,11 +27,20 @@ defmodule Chord.Renderer do
       right_gutter(offset, chord_name)
     ]
 
+  defp fret_to_string(nil, 0),
+    do: [:bright, :black, "┬"]
+
   defp fret_to_string(nil, _fret),
     do: [:bright, :black, "│"]
 
+  defp fret_to_string({note, finger}, fret) when note == fret,
+    do: [:bright, :white, "●"]
+
   defp fret_to_string(note, fret) when note == fret,
     do: [:bright, :white, "●"]
+
+  defp fret_to_string(_note, 0),
+    do: [:bright, :black, "┬"]
 
   defp fret_to_string(_note, _fret),
     do: [:bright, :black, "│"]
@@ -42,4 +56,15 @@ defmodule Chord.Renderer do
 
   defp right_gutter(_, _),
     do: ""
+
+  defp append_fingering(lines, chord),
+    do:
+      lines ++
+        [:reset, "\n   "] ++
+        (chord
+         |> Enum.map(fn
+           {_fret, nil} -> " "
+           {_fret, finger} -> "#{finger}"
+           _ -> " "
+         end))
 end
