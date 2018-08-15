@@ -10,7 +10,15 @@ defmodule Chord.Fingering do
     do: Enum.map(chord, &{&1, 1..4})
 
   defp cleanup(fingerings),
-    do: Enum.map(fingerings, &Tuple.to_list/1)
+    do:
+      Enum.map(fingerings, fn fingering ->
+        fingering
+        |> Tuple.to_list()
+        |> Enum.map(fn
+          {nil, nil} -> nil
+          string -> string
+        end)
+      end)
 
   defp choose_and_sieve(chord, fingerings \\ [])
 
