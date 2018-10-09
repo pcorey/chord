@@ -35,10 +35,10 @@ defmodule Chord.Voicing do
 
       {min, max} =
         new_chord
-        |> Enum.reject(&(&1 == nil))
+        |> Enum.reject(&(&1 == nil || &1 == 0))
         |> Enum.min_max(fn -> {0, 0} end)
 
-      if min == 0 || max - min <= 4 do
+      if max - min <= 4 do
         build_chords(rest, new_chord, chords)
       else
         chords
