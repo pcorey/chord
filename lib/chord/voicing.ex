@@ -47,16 +47,29 @@ defmodule Chord.Voicing do
     |> Enum.reject(&Enum.empty?/1)
   end
 
-  defp all_note_sets(notes) do
-    for length <- 6..length(notes) do
-      for base <- Combination.combine(notes, min(length, length(notes))) do
-        for extension <- Combination.combine(notes, length - length(notes)) do
-          base ++ extension
-        end
-      end
+  def all_note_sets(notes) do
+    required_notes =
+      Enum.filter(notes, fn
+        {:optional, note} -> false
+        _ -> true
+      end)
+
+    optional_notes =
+      Enum.filter(notes, fn
+        {:optional, note} -> true
+        _ -> false
+      end)
+
+    all_notes =
+      Enum.map(notes, fn
+        {_, note} -> note
+        note -> note
+      end)
+
+    for length <- length(required_notes)..6,
+        tail <- Permutation.generate(all_notes, length - length(required_notes), true) do
+      required_notes ++ tail
     end
-    |> Enum.reduce(&Kernel.++/2)
-    |> Enum.reduce(&Kernel.++/2)
   end
 
   defp all_notes(target_note, strings \\ [40, 45, 50, 55, 59, 64], frets \\ 12) do
@@ -66,14 +79,14 @@ defmodule Chord.Voicing do
 
     fretboard
     |> Enum.with_index()
-    |> Enum.map(fn {row, index} ->
-      row
+    |> Enum.map(fn {fret_row, index} ->
+      fret_row
       |> Enum.with_index()
       |> Enum.map(fn {note, string} ->
-        if rem(note, 12) == target_note do
-          {string, index}
-        else
-          nil
+        cond do
+          rem(note, 12) == target_note -> {string, index}
+          note == target_note -> {string, index}
+          true -> nil
         end
       end)
     end)
