@@ -7,6 +7,7 @@ defmodule Chord.Voicing do
       |> List.flatten()
       |> Enum.map(&Tuple.to_list/1)
       |> filter_notes_in_chord(notes_in_chord)
+      |> Enum.uniq()
 
   defp filter_notes_in_chord(voicings, nil),
     do: voicings
