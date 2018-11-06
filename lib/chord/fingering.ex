@@ -23,16 +23,17 @@ defmodule Chord.Fingering do
   defp choose_and_sieve(chord, fingerings \\ [])
 
   defp choose_and_sieve([], fingerings),
-    do:
+    do: [
       fingerings
       |> Enum.reverse()
       |> List.to_tuple()
+    ]
 
   defp choose_and_sieve([{nil, _possible_fingers} | chord], fingerings),
-    do: choose_and_sieve(chord, [{nil, nil} | fingerings])
+    do: [choose_and_sieve(chord, [{nil, nil} | fingerings])] |> List.flatten()
 
   defp choose_and_sieve([{0, _possible_fingers} | chord], fingerings),
-    do: choose_and_sieve(chord, [{0, nil} | fingerings])
+    do: [choose_and_sieve(chord, [{0, nil} | fingerings])] |> List.flatten()
 
   defp choose_and_sieve([{fret, possible_fingers} | chord], fingerings),
     do:
@@ -43,6 +44,7 @@ defmodule Chord.Fingering do
         chord
         |> sieve_chord(new_fingerings)
         |> choose_and_sieve(new_fingerings)
+        |> List.flatten()
       end)
       |> List.flatten()
 

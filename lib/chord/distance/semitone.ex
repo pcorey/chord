@@ -15,6 +15,10 @@ defmodule Chord.Distance.Semitone do
   defp chord_to_notes(chord, strings),
     do:
       chord
+      |> Enum.map(fn
+        {fret, _finger} -> fret
+        fret -> fret
+      end)
       |> Enum.zip(strings)
       |> Enum.reject(fn
         {nil, _} -> true
