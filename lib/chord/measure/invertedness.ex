@@ -72,6 +72,7 @@ defmodule Chord.Measure.Invertedness do
       |> Enum.with_index()
       |> Enum.map(fn
         {nil, _string} -> nil
+        {{note, _finger}, string} -> note + Enum.at(strings, string)
         {note, string} -> note + Enum.at(strings, string)
       end)
       |> Enum.reject(&(&1 == nil))
@@ -93,8 +94,14 @@ defmodule Chord.Measure.Invertedness do
       {d, i} -> d / 8 * (1 / (i + 1))
     end)
     |> Enum.sum()
-    |> Kernel./(base_score(invertedness))
+    |> compute_score(base_score(invertedness))
   end
+
+  defp compute_score(score, 0),
+    do: 0
+
+  defp compute_score(score, base),
+    do: score / base
 
   defp base_score(invertedness) do
     invertedness

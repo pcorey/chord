@@ -67,13 +67,17 @@ defmodule Chord.Voicing do
         note -> note
       end)
 
-    for length <- length(required_notes)..6,
-        tail <- Permutation.generate(all_notes, length - length(required_notes), true) do
-      required_notes ++ tail
+    if required_notes |> length <= 6 do
+      for length <- length(required_notes)..6,
+          tail <- Permutation.generate(all_notes, length - length(required_notes), true) do
+        required_notes ++ tail
+      end
+    else
+      []
     end
   end
 
-  defp all_notes(target_note, strings \\ [40, 45, 50, 55, 59, 64], frets \\ 12) do
+  defp all_notes(target_note, strings \\ [40, 45, 50, 55, 59, 64], frets \\ 18) do
     fretboard =
       for fret <- 0..frets,
           do: Enum.map(strings, &(&1 + fret))
