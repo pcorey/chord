@@ -55,7 +55,7 @@ defmodule Chord.Voicing do
           {nil, open} -> nil
           {fret, open} -> fret + open
         end)
-        |> Enum.reject(&(&1 == nil))
+        |> Enum.reject(&is_nil/1)
         |> (fn
               [nil | _] -> false
               [note | _] -> note == lowest || rem(note, 12) == lowest
@@ -142,6 +142,6 @@ defmodule Chord.Voicing do
       end)
     end)
     |> List.flatten()
-    |> Enum.reject(&(&1 == nil))
+    |> Enum.reject(&is_nil/1)
   end
 end
