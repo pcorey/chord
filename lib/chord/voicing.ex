@@ -6,7 +6,62 @@ defmodule Chord.Voicing do
       |> Enum.map(&build_chords/1)
       |> List.flatten()
       |> Enum.map(&Tuple.to_list/1)
+      |> filter_lowest(get_note_with_option(notes, :lowest))
+      |> filter_highest(get_note_with_option(notes, :highest))
       |> Enum.uniq()
+
+  defp get_note_with_option(notes, option),
+    do:
+      notes
+      |> Enum.filter(fn
+        {^option, note} -> true
+        _ -> false
+      end)
+      |> Enum.map(fn {_, note} -> note end)
+      |> List.first()
+
+  defp filter_highest(voicings, nil),
+    do: voicings
+
+  defp filter_highest(voicings, highest),
+    do:
+      voicings
+      |> Enum.filter(fn voicing ->
+        voicing
+        |> Enum.zip([40, 45, 50, 55, 59, 64])
+        |> Enum.map(fn
+          {nil, open} -> nil
+          {fret, open} -> fret + open
+        end)
+        |> Enum.reverse()
+        |> Enum.reject(&(&1 == nil))
+        |> (fn
+              [nil | _] -> false
+              [note | _] -> note == highest || rem(note, 12) == highest
+              _ -> false
+            end).()
+      end)
+
+  defp filter_lowest(voicings, nil),
+    do: voicings
+
+  defp filter_lowest(voicings, lowest),
+    do:
+      voicings
+      |> Enum.filter(fn voicing ->
+        voicing
+        |> Enum.zip([40, 45, 50, 55, 59, 64])
+        |> Enum.map(fn
+          {nil, open} -> nil
+          {fret, open} -> fret + open
+        end)
+        |> Enum.reject(&(&1 == nil))
+        |> (fn
+              [nil | _] -> false
+              [note | _] -> note == lowest || rem(note, 12) == lowest
+              _ -> false
+            end).()
+      end)
 
   defp build_chords(note_set, chord \\ [nil, nil, nil, nil, nil, nil], chords \\ [])
 
@@ -36,9 +91,14 @@ defmodule Chord.Voicing do
 
   def all_note_sets(notes) do
     required_notes =
-      Enum.filter(notes, fn
+      notes
+      |> Enum.filter(fn
         {:optional, note} -> false
         _ -> true
+      end)
+      |> Enum.map(fn
+        {_, note} -> note
+        note -> note
       end)
 
     optional_notes =
