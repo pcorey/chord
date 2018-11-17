@@ -6,21 +6,7 @@ defmodule Chord.Voicing do
       |> Enum.map(&build_chords/1)
       |> List.flatten()
       |> Enum.map(&Tuple.to_list/1)
-      |> filter_notes_in_chord(notes_in_chord)
       |> Enum.uniq()
-
-  defp filter_notes_in_chord(voicings, nil),
-    do: voicings
-
-  defp filter_notes_in_chord(voicings, notes_in_chord),
-    do:
-      voicings
-      |> Enum.filter(fn voicing ->
-        voicing
-        |> Enum.reject(&(&1 == nil))
-        |> length
-        |> Kernel.==(notes_in_chord)
-      end)
 
   defp build_chords(note_set, chord \\ [nil, nil, nil, nil, nil, nil], chords \\ [])
 
