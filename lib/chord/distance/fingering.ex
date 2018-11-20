@@ -2,34 +2,37 @@
 # https://nlp.stanford.edu/IR-book/html/htmledition/edit-distance-1.html
 
 defmodule Chord.Distance.Fingering do
-  def distance(chord, chord),
+  @doc """
+  `options` can be:
+  - `:noop`
+  - `:place`
+  - `:lift`
+  - `:move_string`
+  - `:move_fret`
+  - `:move`
+  - `:lift_bar`
+  - `:place_bar`
+  """
+
+  @fingers 4
+
+  def distance(from_chord, to_chord, options \\ [])
+
+  def distance(chord, chord, _options),
     do: 0
 
-  def distance(chord_a = [{_, _} | _], chord_b),
-    do: distance(attach_strings(chord_a), chord_b)
+  def distance(from_chord, to_chord, options) do
+    from_chord_with_strings = attach_strings(from_chord)
+    to_chord_with_strings = attach_strings(to_chord)
 
-  def distance(chord_a, chord_b = [{_, _} | _]),
-    do: distance(chord_a, attach_strings(chord_b))
-
-  def distance(chord, []),
-    do:
-      chord
-      |> Enum.reject(&(&1 == nil))
-      |> length
-
-  def distance([], chord),
-    do:
-      chord
-      |> Enum.reject(&(&1 == nil))
-      |> length
-
-  def distance([note_a | rest_a] = chord_a, [note_b | rest_b] = chord_b),
-    do:
-      Enum.min([
-        distance(rest_a, chord_b) + 1,
-        distance(chord_a, rest_b) + 1,
-        distance(rest_a, rest_b) + note_distance(note_a, note_b)
-      ])
+    for finger <- 1..@fingers do
+      from = find_fingers(from_chord_with_strings, finger)
+      to = find_fingers(to_chord_with_strings, finger)
+      d = finger_distance(from, to, options)
+      d
+    end
+    |> Enum.sum()
+  end
 
   defp attach_strings(chord),
     do:
@@ -40,34 +43,59 @@ defmodule Chord.Distance.Fingering do
         {nil, string} -> {nil, nil, string}
       end)
 
-  def note_distance(note, note),
-    do: 0
+  defp find_fingers(chord, finger) do
+    chord
+    |> Enum.filter(fn
+      {_fret, ^finger, _string} -> true
+      _ -> false
+    end)
+  end
 
-  # Place finger
-  def note_distance(nil, _),
-    do: 1
+  # Noop
+  defp finger_distance([], [], options) do
+    Keyword.get(options, :noop, 0)
+  end
 
-  # Lift finger
-  def note_distance(_, nil),
-    do: 1
+  # Place
+  defp finger_distance([], [_], options) do
+    Keyword.get(options, :place, 1)
+  end
 
-  # Slide finger
-  def note_distance({_, _, string}, {_, _, string}),
-    do: 1
+  # Lift
+  defp finger_distance([_], [], options) do
+    Keyword.get(options, :lift, 1)
+  end
 
-  # No-op
-  def note_distance({nil, _, string_a}, {nil, _, string_b}),
-    do: 0
+  # Move
+  defp finger_distance(
+         [{fret_a, finger, string_a}],
+         [{fret_b, finger, string_b}],
+         options
+       ) do
+    string_distance = abs(string_a - string_b) * Keyword.get(options, :move_string, 1)
+    fret_distance = abs(fret_a - fret_b) * Keyword.get(options, :move_fret, 1)
 
-  # Place finger
-  def note_distance({nil, _, string_a}, {fret_b, _, string_b}),
-    do: 1
+    (string_distance + fret_distance)
+    |> Kernel.*(Keyword.get(options, :move, 1))
+  end
 
-  # Lift finger
-  def note_distance({fret_a, _, string_a}, {nil, _, string_b}),
-    do: 1
+  defp finger_distance(
+         from,
+         to,
+         options
+       ) do
+    lift =
+      from
+      |> Enum.reject(&Enum.member?(to, &1))
+      |> Enum.map(fn _ -> Keyword.get(options, :lift_bar, 1) end)
+      |> Enum.sum()
 
-  # Move finger
-  def note_distance({fret_a, _, string_a}, {fret_b, _, string_b}),
-    do: abs(fret_a - fret_b) + abs(string_a - string_b)
+    place =
+      to
+      |> Enum.reject(&Enum.member?(from, &1))
+      |> Enum.map(fn _ -> Keyword.get(options, :place_bar, 1) end)
+      |> Enum.sum()
+
+    lift + place
+  end
 end
