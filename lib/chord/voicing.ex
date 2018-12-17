@@ -1,4 +1,6 @@
 defmodule Chord.Voicing do
+  @tuning [40, 45, 50, 55, 59, 64]
+
   def voicings(notes, notes_in_chord \\ nil),
     do:
       notes
@@ -6,8 +8,8 @@ defmodule Chord.Voicing do
       |> Enum.map(&build_chords/1)
       |> List.flatten()
       |> Enum.map(&Tuple.to_list/1)
-      |> filter_lowest(get_note_with_option(notes, :lowest))
-      |> filter_highest(get_note_with_option(notes, :highest))
+      |> filter_highest_and_lowest(notes, :lowest)
+      |> filter_highest_and_lowest(notes, :highest)
       |> Enum.uniq()
 
   defp get_note_with_option(notes, option),
@@ -20,48 +22,45 @@ defmodule Chord.Voicing do
       |> Enum.map(fn {_, note} -> note end)
       |> List.first()
 
-  defp filter_highest(voicings, nil),
+  defp filter_highest_and_lowest(voicings, notes, option),
+    do:
+      filter_highest_and_lowest(
+        voicings,
+        notes,
+        option,
+        get_note_with_option(notes, option)
+      )
+
+  defp filter_highest_and_lowest(voicings, _notes, _option, nil),
     do: voicings
 
-  defp filter_highest(voicings, highest),
+  defp filter_highest_and_lowest(voicings, _notes, option, target_note),
     do:
       voicings
       |> Enum.filter(fn voicing ->
-        voicing
-        |> Enum.zip([40, 45, 50, 55, 59, 64])
-        |> Enum.map(fn
-          {nil, open} -> nil
-          {fret, open} -> fret + open
-        end)
-        |> Enum.reverse()
-        |> Enum.reject(&(&1 == nil))
-        |> (fn
-              [nil | _] -> false
-              [note | _] -> note == highest || rem(note, 12) == highest
-              _ -> false
-            end).()
+        [note | _] =
+          voicing
+          |> voicing_to_notes()
+          |> orient_notes(option)
+
+        note == target_note || rem(note, 12) == target_note
       end)
 
-  defp filter_lowest(voicings, nil),
-    do: voicings
-
-  defp filter_lowest(voicings, lowest),
+  defp voicing_to_notes(voicing),
     do:
-      voicings
-      |> Enum.filter(fn voicing ->
-        voicing
-        |> Enum.zip([40, 45, 50, 55, 59, 64])
-        |> Enum.map(fn
-          {nil, open} -> nil
-          {fret, open} -> fret + open
-        end)
-        |> Enum.reject(&is_nil/1)
-        |> (fn
-              [nil | _] -> false
-              [note | _] -> note == lowest || rem(note, 12) == lowest
-              _ -> false
-            end).()
+      voicing
+      |> Enum.zip(@tuning)
+      |> Enum.map(fn
+        {nil, open} -> nil
+        {fret, open} -> fret + open
       end)
+      |> Enum.reject(&(&1 == nil))
+
+  defp orient_notes(notes, :lowest),
+    do: notes
+
+  defp orient_notes(notes, :highest),
+    do: Enum.reverse(notes)
 
   defp build_chords(note_set, chord \\ [nil, nil, nil, nil, nil, nil], chords \\ [])
 
@@ -123,7 +122,7 @@ defmodule Chord.Voicing do
     end
   end
 
-  defp all_notes(target_note, strings \\ [40, 45, 50, 55, 59, 64], frets \\ 18) do
+  defp all_notes(target_note, strings \\ @tuning, frets \\ 18) do
     fretboard =
       for fret <- 0..frets,
           do: Enum.map(strings, &(&1 + fret))
