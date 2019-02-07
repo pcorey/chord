@@ -1,49 +1,71 @@
-# https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Erlang
-# https://nlp.stanford.edu/IR-book/html/htmledition/edit-distance-1.html
-
 defmodule Chord.Distance.Fingering do
-  @doc """
-  `options` can be:
-  - `:noop`
-  - `:place`
-  - `:lift`
-  - `:move_string`
-  - `:move_fret`
-  - `:move`
-  - `:lift_bar`
-  - `:place_bar`
+  @moduledoc """
   """
 
   @fingers 4
+  @max_distance 100
 
-  def distance(from_chord, to_chord, options \\ [])
+  import Chord.Util
 
-  def distance(chord, chord, _options),
-    do: 0
+  def distance(chord_a, chord_b, options) do
+    distance =
+      chord_a
+      |> edit_script(chord_b, options)
+      |> script_to_distance(options)
 
-  def distance(from_chord, to_chord, options) do
-    from_chord_with_strings = attach_strings(from_chord)
-    to_chord_with_strings = attach_strings(to_chord)
-
-    for finger <- 1..@fingers do
-      from = find_fingers(from_chord_with_strings, finger)
-      to = find_fingers(to_chord_with_strings, finger)
-      d = finger_distance(from, to, options)
-      d
-    end
-    |> Enum.sum()
+    distance / @max_distance
   end
 
-  defp attach_strings(chord),
-    do:
-      chord
-      |> Enum.with_index()
-      |> Enum.map(fn
-        {{fret, finger}, string} -> {fret, finger, string}
-        {nil, string} -> {nil, nil, string}
-      end)
+  def script_to_distance(script, options \\ [])
 
-  defp find_fingers(chord, finger) do
+  def script_to_distance([], _options),
+    do: 0
+
+  def script_to_distance([{:lift, _} | rest], options),
+    do: Keyword.get(options, :lift, 1) + script_to_distance(rest, options)
+
+  def script_to_distance([{:place, _} | rest], options),
+    do: Keyword.get(options, :place, 1) + script_to_distance(rest, options)
+
+  def script_to_distance([{:slide, from, to} | rest], options) do
+    [{from_fret, _, _} | _] = from
+    [{to_fret, _, _} | _] = to
+    fret_distance = abs(from_fret - to_fret)
+    fret_distance * Keyword.get(options, :slide, 1) + script_to_distance(rest, options)
+  end
+
+  def script_to_distance([{:move, from, to} | rest], options) do
+    [{from_fret, _, from_string} | _] = from
+    [{to_fret, _, to_string} | _] = to
+    fret_distance = abs(from_fret - to_fret)
+    string_distance = abs(from_string - to_string)
+    total_distance = fret_distance + string_distance
+    total_distance * Keyword.get(options, :move, 1) + script_to_distance(rest, options)
+  end
+
+  def edit_script(chord_a, chord_b, options \\ [])
+
+  def edit_script(chord, chord, _options),
+    do: []
+
+  def edit_script(from_chord, to_chord, _options) do
+    for finger <- 1..@fingers do
+      from_finger =
+        from_chord
+        |> attach_strings()
+        |> find_finger(finger)
+
+      to_finger =
+        to_chord
+        |> attach_strings()
+        |> find_finger(finger)
+
+      finger_diff(from_finger, to_finger)
+    end
+    |> List.flatten()
+  end
+
+  defp find_finger(chord, finger) do
     chord
     |> Enum.filter(fn
       {_fret, ^finger, _string} -> true
@@ -51,96 +73,24 @@ defmodule Chord.Distance.Fingering do
     end)
   end
 
-  # Noop
-  defp finger_distance([], [], options) do
-    # IO.puts("noop")
-    Keyword.get(options, :noop, 0)
-  end
+  defp finger_diff(finger, finger),
+    do: []
 
-  # Place
-  defp finger_distance([], [note], options) do
-    # IO.puts("place #{inspect(note)}")
-    Keyword.get(options, :place, 1)
-  end
+  defp finger_diff(from, []),
+    do: {:lift, from}
 
-  # Lift
-  defp finger_distance([note], [], options) do
-    # IO.puts("lift #{inspect(note)}")
-    Keyword.get(options, :lift, 1)
-  end
+  defp finger_diff(from, [{0, nil}]),
+    do: {:lift, from}
 
-  # Slide
-  defp finger_distance(
-         [note_a = {fret_a, finger, string}],
-         [note_b = {fret_b, finger, string}],
-         options
-       ) do
-    # IO.puts("slide #{inspect(note_a)} #{inspect(note_b)}")
+  defp finger_diff([], to),
+    do: {:place, to}
 
-    abs(fret_a - fret_b)
-    |> Kernel.*(Keyword.get(options, :move_fret, 1))
+  defp finger_diff([{0, nil}], to),
+    do: {:place, to}
 
-    # |> Kernel.*(Keyword.get(options, :move, 1))
-  end
+  defp finger_diff(from = [{_, _, string} | _], to = [{_, _, string} | _]),
+    do: {:slide, from, to}
 
-  # Move
-  defp finger_distance(
-         [note_a = {fret_a, finger, string_a}],
-         [note_b = {fret_b, finger, string_b}],
-         options
-       ) do
-    # IO.puts("move #{inspect(note_a)} #{inspect(note_b)}")
-    string_distance = abs(string_a - string_b) * Keyword.get(options, :move_string, 1)
-    fret_distance = abs(fret_a - fret_b) * Keyword.get(options, :move_fret, 1)
-
-    string_distance + fret_distance
-    # |> Kernel.*(Keyword.get(options, :move, 1))
-  end
-
-  defp finger_distance(
-         from,
-         to,
-         options
-       ) do
-    lift =
-      from
-      |> Enum.reject(fn {fret, finger, string} ->
-        # We're lifting a bar if the finger isn't being played on the string anymore. If the finger is being played on the same stirng, but a different fret, we've slid the bar.
-        to
-        |> Enum.map(fn {fret, finger, string} -> {finger, string} end)
-        |> Enum.member?({finger, string})
-      end)
-      # |> Enum.map(fn note -> IO.puts("lift bar #{inspect(note)}") end)
-      |> Enum.map(fn _ -> Keyword.get(options, :lift_bar, 1) end)
-      |> Enum.sum()
-
-    place =
-      to
-      |> Enum.reject(&Enum.member?(from, &1))
-      |> Enum.reject(fn {fret, finger, string} ->
-        # We're placing a bar if the finger hasn't been played on the string. If the finger has been played on the string, but a different fret, we've slid the bar.
-        from
-        |> Enum.map(fn {fret, finger, string} -> {finger, string} end)
-        |> Enum.member?({finger, string})
-      end)
-      # |> Enum.map(fn note -> IO.puts("place bar #{inspect(note)}") end)
-      |> Enum.map(fn _ -> Keyword.get(options, :place_bar, 1) end)
-      |> Enum.sum()
-
-    # TODO: do this...
-    slide =
-      to
-      |> Enum.reject(&Enum.member?(from, &1))
-      |> Enum.reject(fn {fret, finger, string} ->
-        # We're placing a bar if the finger hasn't been played on the string. If the finger has been played on the string, but a different fret, we've slid the bar.
-        from
-        |> Enum.map(fn {fret, finger, string} -> {finger, string} end)
-        |> Enum.member?({finger, string})
-      end)
-      # |> Enum.map(fn note -> IO.puts("place bar #{inspect(note)}") end)
-      |> Enum.map(fn _ -> Keyword.get(options, :place_bar, 1) end)
-      |> Enum.sum()
-
-    lift + place
-  end
+  defp finger_diff(from, to),
+    do: [{:lift, from}, {:move, from, to}, {:place, to}]
 end

@@ -16,7 +16,7 @@ defmodule Chord.Renderer do
     |> Enum.map(&row_to_string(&1, min, chord, chord_name))
     |> Enum.intersperse([:bright, :black, "\n   ├┼┼┼┼┤\n"])
     |> append_fingering(chord)
-    |> IO.ANSI.format()
+    |> IO.ANSI.format(false)
     |> IO.chardata_to_string()
   end
 
@@ -44,6 +44,9 @@ defmodule Chord.Renderer do
 
   defp fret_to_string(_note, _fret),
     do: [:bright, :black, "│"]
+
+  defp left_gutter(_, 0),
+    do: "   "
 
   defp left_gutter(0, fret),
     do: [:bright, :yellow, String.pad_leading("#{fret}", 2, " ") <> " "]
