@@ -6,10 +6,12 @@ defmodule Chord.Table do
   end
 
   def init(:ok) do
-    table = :ets.new(:chords, [:set, :protected])
+    table = :ets.new(:chords, [:protected, :bag])
 
     Chords.generate()
-    |> Enum.map(&:ets.insert(table, {&1, &1}))
+    |> Enum.map(&:ets.insert(table, {&1.root, &1}))
+
+    IO.puts("All voicings generated.")
 
     {:ok, table}
   end
@@ -18,8 +20,12 @@ defmodule Chord.Table do
     GenServer.call(__MODULE__, {:insert, data})
   end
 
-  def select(selector) do
-    GenServer.call(__MODULE__, {:select, selector})
+  def lookup(key) do
+    GenServer.call(__MODULE__, {:lookup, key})
+  end
+
+  def table() do
+    GenServer.call(__MODULE__, {:table})
   end
 
   def handle_call({:insert, data}, _from, table) do
@@ -27,8 +33,12 @@ defmodule Chord.Table do
     {:reply, result, table}
   end
 
-  def handle_call({:select, selector}, _from, table) do
-    result = :ets.select(table, selector)
+  def handle_call({:lookup, key}, _from, table) do
+    result = :ets.lookup(table, key)
     {:reply, result, table}
+  end
+
+  def handle_call({:table}, _from, table) do
+    {:reply, table, table}
   end
 end
