@@ -15,7 +15,7 @@ defmodule PermutationTest do
     do: div(factorial(length(list)), factorial(length(list) - k))
 
   property "returns a list of lists" do
-    check all list <- list_of(integer(), max_length: @max_length) do
+    check all(list <- list_of(integer(), max_length: @max_length)) do
       permutations = Permutation.generate(list)
       assert permutations |> is_list
       Enum.map(permutations, &assert(&1 |> is_list))
@@ -23,8 +23,10 @@ defmodule PermutationTest do
   end
 
   property "returns the correct number of permutations" do
-    check all list <- list_of(integer(), max_length: @max_length),
-              k <- integer(0..length(list)) do
+    check all(
+            list <- list_of(integer(), max_length: @max_length),
+            k <- integer(0..length(list))
+          ) do
       assert pnk(list, k) ==
                list
                |> Permutation.generate(k)
@@ -33,8 +35,10 @@ defmodule PermutationTest do
   end
 
   property "permutations only include elements from list" do
-    check all list <- list_of(integer(), max_length: @max_length),
-              k <- integer(0..length(list)) do
+    check all(
+            list <- list_of(integer(), max_length: @max_length),
+            k <- integer(0..length(list))
+          ) do
       assert [] ==
                list
                |> Enum.with_index()

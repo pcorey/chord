@@ -17,8 +17,10 @@ defmodule InvertednessTest do
       )
 
   property "gives a unit score" do
-    check all chord <- chord(6),
-              root <- integer(0..11) do
+    check all(
+            chord <- chord(6),
+            root <- integer(0..11)
+          ) do
       score = Chord.Measure.Invertedness.invertedness(chord, [root])
       assert score >= 0
       assert score <= 1
