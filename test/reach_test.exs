@@ -17,7 +17,7 @@ defmodule ReachTest do
       )
 
   property "gives a unit score" do
-    check all chord <- chord(6) do
+    check all(chord <- chord(6)) do
       score = Chord.Measure.Reach.reach(chord)
       assert score >= 0
       assert score <= 1
