@@ -75,6 +75,33 @@ We can also put a label on the chord by passing an optional second parameter to
    │││││●
 ```
 
+You can also use the `Chord.Note.to_integer/1` function to provide notes in the
+standard notation:
+
+```
+Chord.Note.to_integer(["C", "Db", "D", "Eb"])
+|> Chord.voicings()
+|> List.first()
+|> Chord.to_string()
+|> IO.puts()
+```
+
+```
+ 0 ┬┬●┬┬┬
+   ├┼┼┼┼┤
+   ││││││
+   ├┼┼┼┼┤
+   ││││││
+   ├┼┼┼┼┤
+   │●││││
+   ├┼┼┼┼┤
+   ││││●│
+   ├┼┼┼┼┤
+   ││││││
+   ├┼┼┼┼┤
+   │││●││
+```
+
 We can also take all (`4` note versions) of our Cmaj7 voicings, calculate their
 "semitone distances" from another chord, like a G7 (`[nil, 10, 12, 10, 12,
 nil]`), and render the three voicings with the shortest distance. These chords
